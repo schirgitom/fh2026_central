@@ -5,12 +5,12 @@ using FluentAssertions;
 
 namespace Tests;
 
-public class SeaWaterAquariumRepositoryTests : IClassFixture<CosmosDbFixture>
+public class SeaWaterAquariumRepositoryTests : IClassFixture<MongoDbFixture>
 {
     private readonly IAquariumRepository _repository;
     private readonly IUnitOfWork _unitOfWork;
 
-    public SeaWaterAquariumRepositoryTests(CosmosDbFixture fixture)
+    public SeaWaterAquariumRepositoryTests(MongoDbFixture fixture)
     {
         _repository = new AquariumRepository(fixture.Context);
         _unitOfWork = new UnitOfWork(fixture.Context);

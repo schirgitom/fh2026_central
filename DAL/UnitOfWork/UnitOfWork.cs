@@ -1,4 +1,5 @@
-﻿using DAL.Repository.Impl;
+using DAL.Repository.Impl;
+using Microsoft.EntityFrameworkCore;
 
 namespace DAL.UnitOfWork
 {
@@ -10,7 +11,6 @@ namespace DAL.UnitOfWork
         {
             Context = context;
         }
-
 
         public IAquariumRepository Aquariums
         {
@@ -46,7 +46,16 @@ namespace DAL.UnitOfWork
 
         public async Task SaveChangesAsync(CancellationToken cancellationToken = default)
         {
-            await Context.SaveChangesAsync(cancellationToken);
+            try
+            {
+                await Context.SaveChangesAsync(cancellationToken);
+            }
+            catch (NotSupportedException ex) when (ex.Message.Contains("transaction", StringComparison.OrdinalIgnoreCase))
+            {
+                // Standalone MongoDB deployments do not support transactions.
+                Context.Database.AutoTransactionBehavior = AutoTransactionBehavior.Never;
+                await Context.SaveChangesAsync(cancellationToken);
+            }
         }
     }
 }

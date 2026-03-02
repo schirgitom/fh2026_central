@@ -6,11 +6,11 @@ using Services.Services;
 
 namespace Tests;
 
-public class UserServiceTests : IClassFixture<CosmosDbFixture>
+public class UserServiceTests : IClassFixture<MongoDbFixture>
 {
     private readonly UserService _service;
 
-    public UserServiceTests(CosmosDbFixture fixture)
+    public UserServiceTests(MongoDbFixture fixture)
     {
         var repo = new Repository<User>(fixture.Context);
         var uow = new UnitOfWork(fixture.Context);

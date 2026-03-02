@@ -8,7 +8,7 @@ namespace AquariumMgmt2026.Controllers;
 [Route("api/[controller]")]
 public class UserController : GenericController<User>
 {
-    public UserController(IUserService service) : base(service)
+    public UserController(IUserService service, ILogger<UserController> logger) : base(service, logger)
     {
     }
 }

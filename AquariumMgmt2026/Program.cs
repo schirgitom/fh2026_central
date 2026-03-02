@@ -2,79 +2,123 @@ using DAL;
 using DAL.Repository;
 using DAL.UnitOfWork;
 using Microsoft.EntityFrameworkCore;
+using MongoDB.Driver;
+using Microsoft.OpenApi.Models;
+using Serilog;
+using Serilog.Events;
 using Services.Interfaces;
 using Services.Services;
-using System.Net.Http;
 
-var builder = WebApplication.CreateBuilder(args);
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+    .Enrich.FromLogContext()
+    .WriteTo.Console()
+    .CreateBootstrapLogger();
 
-// Add services to the container.
-
-builder.Services.AddControllers();
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
-
-var cosmosSection = builder.Configuration.GetSection("Cosmos");
-var accountEndpoint = cosmosSection["AccountEndpoint"];
-var accountKey = cosmosSection["AccountKey"];
-var databaseName = cosmosSection["DatabaseName"];
-var allowInsecureTlsForEmulator = builder.Environment.IsDevelopment() &&
-                                  cosmosSection.GetValue<bool>("AllowInsecureTlsForEmulator");
-
-if (string.IsNullOrWhiteSpace(accountEndpoint) ||
-    string.IsNullOrWhiteSpace(accountKey) ||
-    string.IsNullOrWhiteSpace(databaseName))
+try
 {
-    throw new InvalidOperationException(
-        "Cosmos configuration is missing. Please set Cosmos:AccountEndpoint, Cosmos:AccountKey and Cosmos:DatabaseName.");
-}
+    var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddDbContext<AquariumDBContext>(options =>
-{
-    options.UseCosmos(
-        accountEndpoint,
-        accountKey,
-        databaseName,
-        cosmosOptionsAction: cosmosOptions =>
+    builder.Host.UseSerilog((context, services, loggerConfiguration) =>
+    {
+        loggerConfiguration
+            .ReadFrom.Configuration(context.Configuration)
+            .ReadFrom.Services(services)
+            .Enrich.FromLogContext()
+            .Enrich.WithProperty("Application", "AquariumMgmt2026");
+    });
+
+    // Add services to the container.
+    builder.Services.AddControllers();
+    // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+    builder.Services.AddOpenApi();
+    builder.Services.AddEndpointsApiExplorer();
+    builder.Services.AddSwaggerGen(options =>
+    {
+        options.SwaggerDoc("v1", new OpenApiInfo
         {
-            if (!allowInsecureTlsForEmulator)
-            {
-                return;
-            }
-
-            // Development-only fallback for local emulator setups with untrusted certificates.
-            cosmosOptions.HttpClientFactory(() =>
-            {
-                var handler = new HttpClientHandler
-                {
-                    ServerCertificateCustomValidationCallback =
-                        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
-                };
-                return new HttpClient(handler);
-            });
+            Title = "Aquarium Management API",
+            Version = "v1",
+            Description = "API for managing aquariums, fish, corals, and users."
         });
-});
+    });
 
-builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
-builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
-builder.Services.AddScoped<ICoralService, CoralService>();
-builder.Services.AddScoped<IFishService, FishService>();
-builder.Services.AddScoped<IFreshWaterAquariumService, FreshWaterAquariumService>();
-builder.Services.AddScoped<ISeaWaterAquariumService, SeaWaterAquariumService>();
-builder.Services.AddScoped<IUserService, UserService>();
+    var mongoSection = builder.Configuration.GetSection("MongoDb");
+    var connectionString = mongoSection["ConnectionString"]?.Trim();
+    var databaseName = mongoSection["DatabaseName"]?.Trim();
 
-var app = builder.Build();
+    if (string.IsNullOrWhiteSpace(databaseName))
+    {
+        throw new InvalidOperationException(
+            "MongoDb configuration is missing. Please set MongoDb:DatabaseName.");
+    }
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
+    if (string.IsNullOrWhiteSpace(connectionString))
+    {
+        throw new InvalidOperationException(
+            "MongoDb configuration is missing. Please set MongoDb:ConnectionString.");
+    }
+
+    if (builder.Environment.IsDevelopment())
+    {
+        var mongoUrl = MongoUrl.Create(connectionString);
+        var server = mongoUrl.Server?.ToString() ?? "<unknown>";
+        var user = string.IsNullOrWhiteSpace(mongoUrl.Username) ? "<none>" : mongoUrl.Username;
+        Log.Information("MongoDB configured. Server={Server} User={User} Database={DatabaseName}",
+            server, user, databaseName);
+    }
+
+    builder.Services.AddSingleton<IMongoClient>(_ => new MongoClient(connectionString));
+
+    builder.Services.AddDbContext<AquariumDBContext>((serviceProvider, options) =>
+    {
+        var mongoClient = serviceProvider.GetRequiredService<IMongoClient>();
+        options.UseMongoDB(mongoClient, databaseName);
+    });
+
+    builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+    builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+    builder.Services.AddScoped<ICoralService, CoralService>();
+    builder.Services.AddScoped<IFishService, FishService>();
+    builder.Services.AddScoped<IFreshWaterAquariumService, FreshWaterAquariumService>();
+    builder.Services.AddScoped<ISeaWaterAquariumService, SeaWaterAquariumService>();
+    builder.Services.AddScoped<IUserService, UserService>();
+
+    var app = builder.Build();
+
+    // Configure the HTTP request pipeline.
+    app.UseSerilogRequestLogging(options =>
+    {
+        options.MessageTemplate =
+            "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000} ms";
+        options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
+        {
+            diagnosticContext.Set("RemoteIpAddress", httpContext.Connection.RemoteIpAddress?.ToString() ?? "<unknown>");
+            diagnosticContext.Set("UserAgent", httpContext.Request.Headers.UserAgent.ToString());
+        };
+    });
+
     app.MapOpenApi();
+    app.UseSwagger();
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("/swagger/v1/swagger.json", "Aquarium Management API v1");
+    });
+
+    app.UseHttpsRedirection();
+
+    app.UseAuthorization();
+
+    app.MapControllers();
+
+    Log.Information("Starting AquariumMgmt2026 API");
+    app.Run();
 }
-
-app.UseHttpsRedirection();
-
-app.UseAuthorization();
-
-app.MapControllers();
-
-app.Run();
+catch (Exception ex)
+{
+    Log.Fatal(ex, "The application terminated unexpectedly.");
+}
+finally
+{
+    Log.CloseAndFlush();
+}

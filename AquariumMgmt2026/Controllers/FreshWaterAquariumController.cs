@@ -8,7 +8,22 @@ namespace AquariumMgmt2026.Controllers;
 [Route("api/[controller]")]
 public class FreshWaterAquariumController : GenericController<FreshWaterAquarium>
 {
-    public FreshWaterAquariumController(IFreshWaterAquariumService service) : base(service)
+    private readonly IFreshWaterAquariumService _service;
+    private readonly ILogger<FreshWaterAquariumController> _logger;
+
+    public FreshWaterAquariumController(IFreshWaterAquariumService service,
+        ILogger<FreshWaterAquariumController> logger) : base(service, logger)
     {
+        _service = service;
+        _logger = logger;
+    }
+
+    [HttpGet("by-user/{userId}")]
+    public async Task<IActionResult> GetByUser(string userId, CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Fetching freshwater aquariums for user {UserId}", userId);
+        var aquariums = await _service.WhereAsync(a => a.OwnerId == userId, cancellationToken);
+        _logger.LogInformation("Fetched {Count} freshwater aquariums for user {UserId}", aquariums.Count, userId);
+        return Ok(aquariums);
     }
 }

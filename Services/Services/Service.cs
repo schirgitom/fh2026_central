@@ -16,6 +16,11 @@ public class Service<TEntity> : IService<TEntity> where TEntity : Entity
         UnitOfWork = unitOfWork;
     }
 
+    public async Task<List<TEntity>> GetAllAsync(CancellationToken cancellationToken = default)
+    {
+        return await Repository.FilterAsync(_ => true, cancellationToken);
+    }
+
     public async Task<ServiceResult<TEntity>> CreateAsync(TEntity entity, CancellationToken cancellationToken = default)
     {
         var result = new ServiceResult<TEntity>();

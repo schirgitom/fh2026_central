@@ -6,11 +6,11 @@ using Services.Services;
 
 namespace Tests;
 
-public class CoralServiceTests : IClassFixture<CosmosDbFixture>
+public class CoralServiceTests : IClassFixture<MongoDbFixture>
 {
     private readonly CoralService _service;
 
-    public CoralServiceTests(CosmosDbFixture fixture)
+    public CoralServiceTests(MongoDbFixture fixture)
     {
         var repo = new Repository<Coral>(fixture.Context);
         var uow = new UnitOfWork(fixture.Context);

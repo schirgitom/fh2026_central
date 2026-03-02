@@ -1,5 +1,6 @@
 using DAL.Entities;
 using Microsoft.EntityFrameworkCore;
+using MongoDB.EntityFrameworkCore.Extensions;
 
 namespace DAL;
 
@@ -18,16 +19,10 @@ public class AquariumDBContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.HasDefaultContainer("AquariumService");
-
         modelBuilder.Entity<Aquarium>(entity =>
         {
-            entity.ToContainer("Aquariums");
+            entity.ToCollection("Aquariums");
 
-            // Partition Key – extrem wichtig bei Cosmos
-            entity.HasPartitionKey(a => a.OwnerId);
-
-            // Discriminator für abstrakte Basisklasse
             entity.HasDiscriminator<string>("AquariumType")
                 .HasValue<FreshWaterAquarium>("Freshwater")
                 .HasValue<SeaWaterAquarium>("Seawater");
@@ -35,12 +30,8 @@ public class AquariumDBContext : DbContext
 
         modelBuilder.Entity<Animal>(entity =>
         {
-            entity.ToContainer("Animals");
+            entity.ToCollection("Animals");
 
-            // Partition Key – wichtig bei Cosmos
-            entity.HasPartitionKey(a => a.AquariumId);
-
-            // Discriminator für abstrakte Basisklasse
             entity.HasDiscriminator<string>("AnimalType")
                 .HasValue<Coral>("Coral")
                 .HasValue<Fish>("Fish");
@@ -48,8 +39,7 @@ public class AquariumDBContext : DbContext
 
         modelBuilder.Entity<User>(entity =>
         {
-            entity.ToContainer("Users");
-            entity.HasPartitionKey(u => u.ID);
+            entity.ToCollection("Users");
         });
     }
 }

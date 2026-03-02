@@ -14,25 +14,39 @@ namespace DAL.Repository
             Context = context;
             DbSet = context.Set<TEntity>();
         }
-    
+
+        private IQueryable<TEntity> GetQueryable()
+        {
+            if (typeof(TEntity) != typeof(Aquarium) && typeof(Aquarium).IsAssignableFrom(typeof(TEntity)))
+            {
+                return Context.Set<Aquarium>().OfType<TEntity>();
+            }
+
+            if (typeof(TEntity) != typeof(Animal) && typeof(Animal).IsAssignableFrom(typeof(TEntity)))
+            {
+                return Context.Set<Animal>().OfType<TEntity>();
+            }
+
+            return DbSet;
+        }
 
         public async Task<List<TEntity>> FilterAsync(Expression<Func<TEntity, bool>> filterExpression, CancellationToken cancellationToken = default)
         {
-            return await DbSet
+            return await GetQueryable()
                 .Where(filterExpression)
                 .ToListAsync(cancellationToken);
         }
 
         public async Task<TEntity> FindAsync(Expression<Func<TEntity, bool>> filterExpression, CancellationToken cancellationToken = default)
         {
-            return await DbSet
+            return await GetQueryable()
                 .Where(filterExpression)
                 .FirstOrDefaultAsync(cancellationToken);
         }
 
         public async Task<TEntity> GetAsync(string id, CancellationToken cancellationToken = default)
         {
-            return await DbSet
+            return await GetQueryable()
                 .Where(e => e.ID.Equals(id))
                 .FirstOrDefaultAsync(cancellationToken);
         }
@@ -57,7 +71,7 @@ namespace DAL.Repository
             Expression<Func<TEntity, bool>> filterExpression,
             CancellationToken cancellationToken = default)
         {
-            var entities = await DbSet
+            var entities = await GetQueryable()
                 .Where(filterExpression)
                 .ToListAsync(cancellationToken);
 

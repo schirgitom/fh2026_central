@@ -5,6 +5,8 @@ namespace Services.Interfaces;
 
 public interface IService<TEntity>
 {
+    Task<List<TEntity>> GetAllAsync(CancellationToken cancellationToken = default);
+
     Task<ServiceResult<TEntity>> CreateAsync(TEntity entity, CancellationToken cancellationToken = default);
 
     Task<ServiceResult<TEntity>> UpdateAsync(TEntity entity, CancellationToken cancellationToken = default);
