@@ -1,33 +1,42 @@
 using DAL.Entities;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Services.Interfaces;
+using System.IO;
 
 namespace AquariumMgmt2026.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[AllowAnonymous]
 public class SeedController : ControllerBase
 {
     private readonly IUserService _userService;
     private readonly IFreshWaterAquariumService _freshWaterAquariumService;
     private readonly ISeaWaterAquariumService _seaWaterAquariumService;
+    private readonly IAquariumImageService _aquariumImageService;
     private readonly IFishService _fishService;
     private readonly ICoralService _coralService;
+    private readonly IWebHostEnvironment _environment;
     private readonly ILogger<SeedController> _logger;
 
     public SeedController(
         IUserService userService,
         IFreshWaterAquariumService freshWaterAquariumService,
         ISeaWaterAquariumService seaWaterAquariumService,
+        IAquariumImageService aquariumImageService,
         IFishService fishService,
         ICoralService coralService,
+        IWebHostEnvironment environment,
         ILogger<SeedController> logger)
     {
         _userService = userService;
         _freshWaterAquariumService = freshWaterAquariumService;
         _seaWaterAquariumService = seaWaterAquariumService;
+        _aquariumImageService = aquariumImageService;
         _fishService = fishService;
         _coralService = coralService;
+        _environment = environment;
         _logger = logger;
     }
 
@@ -38,9 +47,9 @@ public class SeedController : ControllerBase
         var freshwaterUser = new User
         {
             ID = Guid.NewGuid().ToString(),
-            Email = "anna.mueller@aquarium-demo.local",
-            Firstname = "Anna",
-            Lastname = "Mueller",
+            Email = "sheldon.cooper@aquarium.local",
+            Firstname = "Sheldon",
+            Lastname = "Cooper",
             Password = "Demo!123",
             Active = true
         };
@@ -48,9 +57,9 @@ public class SeedController : ControllerBase
         var seawaterUser = new User
         {
             ID = Guid.NewGuid().ToString(),
-            Email = "lukas.weber@aquarium-demo.local",
-            Firstname = "Lukas",
-            Lastname = "Weber",
+            Email = "john.doe@aquarium.local",
+            Firstname = "John",
+            Lastname = "Doe",
             Password = "Demo!123",
             Active = true
         };
@@ -196,9 +205,61 @@ public class SeedController : ControllerBase
             }
         }
 
+        var seedImageFiles = new[] { "IMG_1804.JPEG", "IMG_1806.JPEG" };
+        var imagesFolder = Path.Combine(_environment.ContentRootPath, "Images");
+        if (!Directory.Exists(imagesFolder))
+        {
+            imagesFolder = Path.Combine(AppContext.BaseDirectory, "Images");
+        }
+
+        var imageCreatedCount = 0;
+        foreach (var imageFileName in seedImageFiles)
+        {
+            var imagePath = Path.Combine(imagesFolder, imageFileName);
+            if (!System.IO.File.Exists(imagePath))
+            {
+                _logger.LogWarning("Seed image file not found: {ImagePath}", imagePath);
+                continue;
+            }
+
+            var imageData = await System.IO.File.ReadAllBytesAsync(imagePath, cancellationToken);
+            var fileExtension = Path.GetExtension(imageFileName).ToLowerInvariant();
+            var contentType = fileExtension switch
+            {
+                ".jpg" => "image/jpeg",
+                ".jpeg" => "image/jpeg",
+                ".png" => "image/png",
+                ".gif" => "image/gif",
+                ".webp" => "image/webp",
+                _ => "application/octet-stream"
+            };
+
+            var image = new AquariumImage
+            {
+                ID = Guid.NewGuid().ToString(),
+                AquariumId = seawaterAquarium.ID,
+                FileName = imageFileName,
+                Name = Path.GetFileNameWithoutExtension(imageFileName),
+                Description = $"Seed image for aquarium {seawaterAquarium.Name}",
+                UploadedAtUtc = DateTime.UtcNow,
+                ContentType = contentType,
+                Data = imageData
+            };
+
+            var createdImage = await _aquariumImageService.CreateAsync(image, cancellationToken);
+            if (!createdImage.IsSuccess)
+            {
+                _logger.LogWarning("Dummy data creation failed while creating image entry for aquarium {AquariumId}",
+                    seawaterAquarium.ID);
+                return BadRequest(createdImage.Errors);
+            }
+
+            imageCreatedCount++;
+        }
+
         _logger.LogInformation(
-            "Dummy data creation successful. Users={Users} Aquariums={Aquariums} Fish={Fish} Corals={Corals}",
-            2, 2, fishToCreate.Length, coralsToCreate.Length);
+            "Dummy data creation successful. Users={Users} Aquariums={Aquariums} Fish={Fish} Corals={Corals} Images={Images}",
+            2, 2, fishToCreate.Length, coralsToCreate.Length, imageCreatedCount);
 
         return Ok(new
         {
@@ -207,6 +268,8 @@ public class SeedController : ControllerBase
             aquariumsCreated = 2,
             fishCreated = fishToCreate.Length,
             coralsCreated = coralsToCreate.Length,
+            imagesCreated = imageCreatedCount,
+            imagesTargetAquariumId = freshwaterAquarium.ID,
             userIds = new[] { freshwaterUser.ID, seawaterUser.ID },
             aquariumIds = new[] { freshwaterAquarium.ID, seawaterAquarium.ID }
         });

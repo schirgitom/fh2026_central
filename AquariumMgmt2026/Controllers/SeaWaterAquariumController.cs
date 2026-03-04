@@ -1,4 +1,5 @@
 using DAL.Entities;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Services.Interfaces;
 
@@ -17,6 +18,7 @@ public class SeaWaterAquariumController : GenericController<SeaWaterAquarium>
         _logger = logger;
     }
 
+    [Authorize(Policy = "UserOrService")]
     [HttpGet("by-user/{userId}")]
     public async Task<IActionResult> GetByUser(string userId, CancellationToken cancellationToken)
     {

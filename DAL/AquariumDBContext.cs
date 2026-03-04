@@ -16,6 +16,7 @@ public class AquariumDBContext : DbContext
     public DbSet<Coral> Corals => Set<Coral>();
     public DbSet<Fish> Fishes => Set<Fish>();
     public DbSet<User> Users => Set<User>();
+    public DbSet<AquariumImage> AquariumImages => Set<AquariumImage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -40,6 +41,11 @@ public class AquariumDBContext : DbContext
         modelBuilder.Entity<User>(entity =>
         {
             entity.ToCollection("Users");
+        });
+
+        modelBuilder.Entity<AquariumImage>(entity =>
+        {
+            entity.ToCollection("AquariumImages");
         });
     }
 }

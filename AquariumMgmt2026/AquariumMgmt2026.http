@@ -1,6 +1,25 @@
 @AquariumMgmt2026_HostAddress = http://localhost:5011
+@Token =
+@ServiceKey = ChangeThisServiceApiKey!
+
+POST {{AquariumMgmt2026_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "sheldon.cooper@aquarium.local",
+  "password": "Demo!123"
+}
+
+###
 
 GET {{AquariumMgmt2026_HostAddress}}/api/health
 Accept: application/json
+Authorization: Bearer {{Token}}
+
+###
+
+GET {{AquariumMgmt2026_HostAddress}}/api/FreshWaterAquarium/by-user/USER_ID
+Accept: application/json
+X-Service-Key: {{ServiceKey}}
 
 ###

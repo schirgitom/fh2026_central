@@ -5,10 +5,13 @@
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+        <UserSecretsId>4b850323-ba0a-4c32-8960-50402b52b3fb</UserSecretsId>
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.11" />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.11" />
+        <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.23.0" />
         <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
         <PackageReference Include="Serilog.Settings.Configuration" Version="9.0.0" />
         <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
@@ -25,6 +28,15 @@
     <ItemGroup>
       <ProjectReference Include="..\Services\Services.csproj" />
       <ProjectReference Include="..\DAL\DAL.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Update="Images\IMG_1804.JPEG">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
+      <None Update="Images\IMG_1806.JPEG">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
     </ItemGroup>
 
 </Project>
