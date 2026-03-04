@@ -45,6 +45,7 @@ public abstract class GenericController<TEntity> : ControllerBase, IService<TEnt
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] TEntity entity, CancellationToken cancellationToken)
     {
+        entity.ID = Guid.NewGuid().ToString();
         Logger.LogInformation("Creating {EntityType} with ID {EntityId}", typeof(TEntity).Name, entity.ID);
         var result = await Service.CreateAsync(entity, cancellationToken);
         if (!result.IsSuccess)

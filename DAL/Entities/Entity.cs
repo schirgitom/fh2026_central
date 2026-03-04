@@ -8,7 +8,7 @@ namespace DAL.Entities
     {
         [Key]
         [JsonPropertyName("id")]
-        public string ID { get; set; }
+        public string ID { get; set; } = string.Empty;
 
  
     }
